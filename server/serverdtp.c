@@ -1,15 +1,16 @@
-#include <stdio.h>
+#define _GNU_SOURCE
+#include "serverdtp.h"
+
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
 
-#define PWDFILE "etc/ausftp/ftpusers"
 
-bool check_credentials(char *user, char *pass) {
+int check_credentials(char *user, char *pass) {
     FILE *file;
     char *path = PWDFILE, *line = NULL, cred[100];
     size_t len = 0;
-    bool found = false;
+    int found = -1;
 
     // make the credential string
     sprintf(cred, "%s:%s", user, pass);
@@ -17,13 +18,13 @@ bool check_credentials(char *user, char *pass) {
     // check if it is present in any ftpusers line
     file = fopen(path, "r");
     if (file == NULL) {
-        fprintf(stderr, "Error: No se pudo abrir el archivo %s", path);
-        return false;
+        fprintf(stderr, "Error: no se pudo abrir el archivo de usuarios.\n");
+        return -1;
     }
     while (getline(&line, &len, file) != -1) {
         strtok(line, "\n");
         if (strcmp(line, cred) == 0) {
-            found = true;
+            found = 0;
             break;
         }
     }

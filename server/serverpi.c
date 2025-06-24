@@ -1,43 +1,95 @@
+#include "serverpi.h"
+#include "serverausftp.h"
+#include "responses.h"
+#include "utils.h" 
+#include "session.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <string.h>
-#include "serverausftp.h"
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <errno.h>
+#include <strings.h>
 
-#define MSG_220 "220 srvFtp version 1.0\r\n"
-#define MSG_331 "331 Password required for %s\r\n"
-#define MSG_230 "230 User %s logged in\r\n"
-#define MSG_530 "530 Login incorrect\r\n"
-#define MSG_221 "221 Goodbye\r\n"
-#define MSG_550 "550 %s: no such file or directory\r\n"
-#define MSG_299 "299 File %s size %ld bytes\r\n"
-#define MSG_226 "226 Transfer complete\r\n"
+static ftp_command_t ftp_commands[] = {
+    {"USER", handle_USER},
+    {"PASS", handle_PASS},
+    {"QUIT", handle_QUIT},
+    {"SYST", handle_SYST},
+    {"TYPE", handle_TYPE},
+    {"PORT", handle_PORT},
+    {"RETR", handle_RETR},
+    {"STOR", handle_STOR},
+    {"NOOP", handle_NOOP},
+    {NULL, NULL}
+};
 
-/*
- * Recibe un comando desde el socket.
-*/
 
-int recv_cmd(int socketDescriptor, char *operation, char *param) {
-    char buffer[BUFSIZE];
-    char *token;
-
-    if (recv(socketDescriptor, buffer, BUFSIZE, 0) < 0) {
-      fprintf(stderr, "Error: no se recibio ningun comando");
-      return -1;
-    }
-    buffer[strcspn(buffer, "\r\n")] = 0;
-    token = strtok(buffer, " ");
-    if (token == NULL || strlen(token) < 4) {
-        fprintf(stderr, "Error: comando ftp invalido");
+int welcome(ftp_session_t *sess){
+    //mando mensaje FTP bienvenida
+    if(safe_dprintf(sess->control_sock, MSG_220) != sizeof(MSG_220) -1){ 
+        fprintf(stderr, "Send error\n");
+        close_fd(sess->control_sock, "cliente socket"); 
         return -1;
-    } else {
-        strcpy(operation, token);
-        token = strtok(NULL, " ");
-        #if DEBUG //Al incluir en la compilación -d DEBUG, se van a ver todos los prints q se indiquen de esta forma
-        printf("par %s\n", token);
-        #endif
-        if (token != NULL) strcpy(param, token);
+    }
+    return 0;
+}
+
+int get_exe_command(ftp_session_t *sess){
+    char buffer[BUFSIZE];
+
+    //recive string del command chanel
+    ssize_t len = recv(sess->control_sock, buffer, sizeof(buffer) -1, 0);
+    if(len < 0){
+        perror("Receive fail: ");
+        close_fd(sess->control_sock, "cliente socket");
+        return -1;
+    }
+
+    //la conexion se cerro inapropiadamente y nosotros la cerramos bien
+    if(len == 0){
+        sess->current_user[0] = '\0'; //cierro sesion
+        close_fd(sess->control_sock, "client socket");
+        sess->control_sock = -1;
+        return -1;
+    }
+
+    buffer[len] = '\0';
+
+    //strip CRLF
+    char *cr = strchr(buffer, '\r');
+    if(cr) *cr = '\0';
+    char *lf = strchr(buffer, '\n');
+    if(lf) *lf = '\0';
+
+    //separo comando y argumento
+    char *arg = NULL;
+    char *cmd = buffer;
+
+    //caso de comando nulo
+    if(cmd[0] == '\0'){
+        safe_dprintf(sess->control_sock, "500 Empty command. \r\n");
         return 0;
     }
+
+    char *space = strchr(buffer, ' ');
+    if(space){
+        *space = '\0';
+        arg = space + 1;
+        while(*arg == ' ') arg++;
+    }
+
+    ftp_command_t *entry = ftp_commands;
+    while(entry->name){
+        if(strcasecmp(entry->name, cmd) == 0){
+            entry->handler(arg ? arg : "");
+            return (sess->control_sock < 0) ? -1 : 0;
+        }
+        entry++;
+    }
+
+    safe_dprintf(sess->control_sock, "502 Command not implemented.\r\n");
+    return 0;
+
 }
