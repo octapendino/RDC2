@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "serverdtp.h"
+#include "dtp.h"
 
 #include <stdlib.h>
 #include <stdio.h>

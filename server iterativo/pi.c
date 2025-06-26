@@ -1,5 +1,5 @@
-#include "serverpi.h"
-#include "serverausftp.h"
+#include "pi.h"
+#include "server.h"
 #include "responses.h"
 #include "utils.h" 
 #include "session.h"
@@ -79,7 +79,7 @@ int get_exe_command(ftp_session_t *sess){
         arg = space + 1;
         while(*arg == ' ') arg++;
     }
-
+    printf("Comando recibido: %s %s\n", cmd, arg ? arg : "");
     ftp_command_t *entry = ftp_commands;
     while(entry->name){
         if(strcasecmp(entry->name, cmd) == 0){

@@ -1,6 +1,6 @@
 //#include "config.h"
 #include "arguments.h"
-#include "serverausftp.h" //lo comento para hacer pruebas
+#include "server.h" //lo comento para hacer pruebas
 #include "utils.h"
 //#include "signals.h"
 #include <unistd.h>

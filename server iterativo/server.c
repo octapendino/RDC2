@@ -1,7 +1,7 @@
-#include "serverausftp.h"
+#include "server.h"
 #include "utils.h"
 #include "config.h"
-#include "serverpi.h"
+#include "pi.h"
 #include "session.h"
 
 #include <unistd.h>
@@ -112,5 +112,5 @@ void server_loop(int socket){
             break;
         }
     }
-    session_close(); //a esto el lo llamo session_cleanup()
+    session_cleanup(); //a esto el lo llamo session_cleanup()
 }
