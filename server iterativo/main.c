@@ -21,19 +21,19 @@ int main(int argc, char *argv[]){
         return EXIT_FAILURE;
     }
 
-    printf("Start server on %s:%d\n", args.address, args.port); // es para debuggear
+    printf("Start server on %s:%d\n", args.address, args.port); //Es para debuggear.
 
-    int master_socket = server_init(args.address, args.port);
+    int master_socket = server_init(args.address, args.port); //Inicia el servidor y coloca el socket en modo escucha.
 
     if(master_socket < 0){
         return EXIT_FAILURE;
     }
 
-    //setup_signals();
+    setup_signals();
 
     while(1){
-        struct sockaddr_in slave_addr; //esto prueba de no usarlo en la llamda server_accept
-        int slave_socket = server_accept(master_socket, &slave_addr); //modifico la f server_accept
+        struct sockaddr_in slave_addr;
+        int slave_socket = server_accept(master_socket, &slave_addr); //Acepta conexiones en bucle y devuelve un socket en slave_socket.
 
         if(slave_socket < 0){
             continue;
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]){
         inet_ntop(AF_INET, &slave_addr.sin_addr, client_ip, sizeof(client_ip));
         printf("Connection from %s:%d accepted\n", client_ip, ntohs(slave_addr.sin_port));
 
-        server_loop(slave_socket);
+        server_loop(slave_socket); //Gestiona toda la comunicación.
 
         printf("Connection from %s:%d closed\n", client_ip, ntohs(slave_addr.sin_port));
     }
